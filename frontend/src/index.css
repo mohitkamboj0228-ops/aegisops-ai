@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+body {
+  background: #020617;
+  color: white;
+  font-family: Inter, Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: white;
+  font-family:
+    Inter,
+    Arial,
+    Helvetica,
+    sans-serif;
+}
