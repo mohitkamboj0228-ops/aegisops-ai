@@ -1,0 +1,22 @@
+services:
+  aegisops:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - aegis-data:/app/data
+    environment:
+      AEGIS_AI_PROVIDER: ${AEGIS_AI_PROVIDER:-disabled}
+      AEGIS_AI_MODEL: ${AEGIS_AI_MODEL:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  aegis-data:
