@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AegisOps local runtime
+data/
+*.db
+*.db-wal
+*.db-shm
