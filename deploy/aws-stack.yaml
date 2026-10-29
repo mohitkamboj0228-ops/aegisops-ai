@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Single-user AegisOps instance with no inbound ports; access through SSM forwarding
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet with internet gateway route, DNS and outbound connectivity.
+  InstanceProfile:
+    Type: String
+    AllowedPattern: '[A-Za-z0-9+=,.@_-]+'
+  ArtifactBucket:
+    Type: String
+    AllowedPattern: '[a-z0-9.-]+'
+  ArtifactKey:
+    Type: String
+    AllowedPattern: 'releases/[a-f0-9]{64}\.zip'
+  BedrockModelArn:
+    Type: String
+    Default: ''
+    AllowedPattern: '^$|arn:aws:bedrock:[a-z0-9-]+:[0-9]*:(foundation-model|inference-profile)/[A-Za-z0-9.:-]+'
+  AmiId:
+    Type: AWS::EC2::Image::Id
+Conditions:
+  EnableAI: !Not [!Equals [!Ref BedrockModelArn, '']]
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: AegisOps - no inbound ports, SSM access only
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: AegisOps
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: t3.small
+      IamInstanceProfile: !Ref InstanceProfile
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: true
+          SubnetId: !Ref SubnetId
+          GroupSet: [!Ref SecurityGroup]
+      Tags:
+        - Key: Name
+          Value: AegisOps
+        - Key: Project
+          Value: AegisOps
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            set -euo pipefail
+            exec > /var/log/aegis-bootstrap.log 2>&1
+            dnf install -y python3 python3-pip unzip awscli2
+            mkdir -p /etc
+            cat > /etc/aegisops.env <<'ENV'
+            AWS_REGION=${AWS::Region}
+            AEGIS_AI_PROVIDER=${AIProvider}
+            AEGIS_AI_MODEL=${BedrockModelArn}
+            AEGIS_DB=/var/lib/aegis/aegis.db
+            AEGIS_HOST=127.0.0.1
+            ENV
+            chmod 600 /etc/aegisops.env
+            aws s3 cp 's3://${ArtifactBucket}/${ArtifactKey}' /tmp/aegis-release.zip --region '${AWS::Region}'
+            python3 -c "import hashlib; assert hashlib.sha256(open('/tmp/aegis-release.zip','rb').read()).hexdigest() == '${ArtifactKey}'.split('/')[1][:-4]"
+            mkdir -p /tmp/aegis-bootstrap
+            unzip -q /tmp/aegis-release.zip -d /tmp/aegis-bootstrap
+            bash /tmp/aegis-bootstrap/deploy/install.sh
+          - AIProvider: !If [EnableAI, bedrock, disabled]
+Outputs:
+  InstanceId:
+    Value: !Ref Instance
+  Access:
+    Value: !Sub 'aws ssm start-session --target ${Instance} --document-name AWS-StartPortForwardingSession --parameters {"portNumber":["8080"],"localPortNumber":["8080"]} --region ${AWS::Region}'
