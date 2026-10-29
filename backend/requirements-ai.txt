@@ -1,0 +1,2 @@
+# Optional: Bedrock transport and AWS deployment tooling. Anthropic uses urllib.
+boto3>=1.40,<2

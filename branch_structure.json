@@ -1,0 +1,15 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "codex/aegisops-ai-v2",
+    "main"
+  ],
+  "parent": {
+    "codex/aegisops-ai-v2": "main",
+    "main": null
+  },
+  "order": [
+    "main",
+    "codex/aegisops-ai-v2"
+  ]
+}
